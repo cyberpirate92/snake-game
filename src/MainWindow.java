@@ -1,11 +1,16 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 
+import javax.swing.BorderFactory;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
@@ -21,11 +26,20 @@ public class MainWindow extends JFrame{
 	private final Color SNAKE_COLOR = Color.GREEN;
 	private final Color COLLECTIBLE_COLOR = Color.RED;
 	
+	// offset constants - these are to be added to the current position
+	private static final Position leftOffset = new Position(0, -1);
+	private static final Position rightOffset = new Position(0, 1);
+	private static final Position upOffset = new Position(-1, 0);
+	private static final Position downOffset = new Position(1, 0);
+	
+	private Timer timer;
 	private JPanel topPanel, gridPanel;
 	private JPanel[][] gridCells;
-	private Position snakePos, colObjPos;
+	private Position snakePos, colObjPos, directionOffset;
 	private boolean gameOver;
 	private int score;
+	
+	private JLabel scoreLabel;
 	
     private static Logger logger = LogManager.getLogger(MainWindow.class);
 	
@@ -34,15 +48,15 @@ public class MainWindow extends JFrame{
 		
 		score = 0;
 		gameOver = false;
+		directionOffset = rightOffset;
+		
+		timer = new Timer();
 		topPanel= new JPanel();
 		gridPanel = new JPanel();
 		gridCells = new JPanel[GRID_SIZE][GRID_SIZE];
 		gridPanel.setLayout(new GridLayout(GRID_SIZE, GRID_SIZE, 0, 0));
 		
 		Random random = new Random();
-		snakePos = new Position(GRID_SIZE/2, Math.abs(random.nextInt()%(GRID_SIZE/3)+2));
-		logger.debug("Snake position set as " + snakePos);
-		//System.out.println("Snake position set as " + snakePos);
 		for(int i=0; i<gridCells.length; i++) {
 			for(int j=0; j<gridCells[i].length; j++) {
 				gridCells[i][j] = new JPanel();
@@ -50,12 +64,15 @@ public class MainWindow extends JFrame{
 				gridPanel.add(gridCells[i][j]);
 			}
 		}
+		setSnakePosition(new Position(GRID_SIZE/2, Math.abs(random.nextInt()%(GRID_SIZE/3)+2)));
+		
+		scoreLabel = new JLabel("Score: 0");
 		
 		initGame();
 		this.getContentPane().add(topPanel, BorderLayout.NORTH);
 		this.getContentPane().add(gridPanel, BorderLayout.CENTER);
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		this.setSize(500, 600);
+		this.setSize(500, 500);
 		this.setLocationRelativeTo(null);
 		this.setVisible(true);
 	}
@@ -71,56 +88,48 @@ public class MainWindow extends JFrame{
 
 			@Override
 			public void keyPressed(KeyEvent e) {
-				// TODO Auto-generated method stub
 				
 			}
 
 			@Override
 			public void keyReleased(KeyEvent e) {
-				// TODO Auto-generated method stub
-				Position prevPos = new Position(snakePos.getX(), snakePos.getY());
-				boolean hit = false;
-				
 				if(e.getKeyCode() == KeyEvent.VK_DOWN) {
-					if(snakePos.getX() != GRID_SIZE-1)
-						snakePos.setX(snakePos.getX()+1);
-					else hit = true;
+					directionOffset = downOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_UP) {
-					if(snakePos.getX() != 0)
-						snakePos.setX(snakePos.getX()-1);
-					else hit = true;
+					directionOffset = upOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_LEFT) {
-					if(snakePos.getY() != 0)
-						snakePos.setY(snakePos.getY()-1);
-					else hit = true;
+					directionOffset = leftOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_RIGHT) {
-					if(snakePos.getY() != GRID_SIZE-1)
-						snakePos.setY(snakePos.getY()+1);
-					else hit = true;
+					directionOffset = rightOffset;
 				}
-				if(prevPos != snakePos) {
-					gridCells[prevPos.getX()][prevPos.getY()].setBackground(DEFAULT_BACKGROUND);
-					gridCells[snakePos.getX()][snakePos.getY()].setBackground(SNAKE_COLOR);
-					logger.debug("Snake position updated to " + snakePos + " from " + prevPos);
-					System.out.println("Snake position updated to " + snakePos + " from " + prevPos);
-				}
-				else if(hit) {
-					JOptionPane.showMessageDialog(null, "Game Over!!");
-					gameOver = true;
-				}
-				if(snakePos.equals(colObjPos))
-					score++;
 			}
-			
 		});
-		
+		// some minor styling
+		topPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
 		topPanel.setBackground(Color.BLACK);
-		topPanel.setForeground(Color.GREEN);
-		gridCells[snakePos.getX()][snakePos.getY()].setBackground(SNAKE_COLOR);
+		topPanel.add(scoreLabel);
+		gridPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+		scoreLabel.setForeground(Color.GREEN);
+		
 		generateCollectibleItem();
+		
+		timer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				Position newPos = new Position(snakePos);
+				newPos.addOffset(directionOffset);
+				if(newPos.getX() >= GRID_SIZE-1 || newPos.getX() < 0)
+					haltGame();
+				else if(newPos.getY() >= GRID_SIZE-1 || newPos.getY() < 0)
+					haltGame();
+				else {
+					setSnakePosition(newPos);
+				}
+			}
+		}, 0, 100);
 	}
 	
 	private boolean placeCollectibeItem(Position position) {
@@ -147,6 +156,7 @@ public class MainWindow extends JFrame{
 	
 	public void setScore(int newScore) {
 		score = newScore;
+		updateScoreLabel();
 	}
 	
 	public int getScore() {
@@ -159,5 +169,32 @@ public class MainWindow extends JFrame{
 	
 	private void incrementScore() {
 		this.incrementScore(1);
+	}
+	
+	public void updateScoreLabel() {
+		scoreLabel.setText("Score: " + score);
+	}
+	
+	public void setScoreLabel(String text) {
+		scoreLabel.setText(text);
+	}
+	
+	private void setSnakePosition(Position p) {
+		if(snakePos != null) {
+			gridCells[snakePos.getX()][snakePos.getY()].setBackground(DEFAULT_BACKGROUND);
+			System.out.println("Snake position updated to " + p + " from " + snakePos);
+		}
+		snakePos = new Position(p);
+		gridCells[snakePos.getX()][snakePos.getY()].setBackground(SNAKE_COLOR);
+		
+		if(colObjPos != null && snakePos.equals(colObjPos)) {
+			generateCollectibleItem();
+			incrementScore();
+		}
+	}
+	
+	private void haltGame() {
+		timer.cancel();
+		JOptionPane.showMessageDialog(null, "Game Over!");
 	}
 }

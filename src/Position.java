@@ -36,4 +36,9 @@ public class Position {
 	public String toString() {
 		return "(" + this.getX() + ", " + this.getY() + ")";
 	}
+	
+	public void addOffset(Position p) {
+		this.x += p.getX();
+		this.y += p.getY();
+	}
 }
