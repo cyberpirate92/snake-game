@@ -2,6 +2,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Random;
@@ -51,6 +53,7 @@ public class MainWindow extends JFrame{
 		directionOffset = rightOffset;
 		
 		timer = new Timer();
+
 		topPanel= new JPanel();
 		gridPanel = new JPanel();
 		gridCells = new JPanel[GRID_SIZE][GRID_SIZE];
@@ -78,17 +81,13 @@ public class MainWindow extends JFrame{
 	}
 	
 	public void initGame() {
-		
 		this.addKeyListener(new KeyListener() {
-
 			@Override
 			public void keyTyped(KeyEvent e) {
-				
 			}
 
 			@Override
 			public void keyPressed(KeyEvent e) {
-				
 			}
 
 			@Override
@@ -107,6 +106,7 @@ public class MainWindow extends JFrame{
 				}
 			}
 		});
+		
 		// some minor styling
 		topPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
 		topPanel.setBackground(Color.BLACK);
@@ -116,20 +116,36 @@ public class MainWindow extends JFrame{
 		
 		generateCollectibleItem();
 		
-		timer.schedule(new TimerTask() {
+		// when window not in focus, pause game
+		this.addFocusListener(new FocusListener() {
 			@Override
-			public void run() {
-				Position newPos = new Position(snakePos);
-				newPos.addOffset(directionOffset);
-				if(newPos.getX() >= GRID_SIZE-1 || newPos.getX() < 0)
-					haltGame();
-				else if(newPos.getY() >= GRID_SIZE-1 || newPos.getY() < 0)
-					haltGame();
-				else {
-					setSnakePosition(newPos);
+			public void focusGained(FocusEvent e) {
+				if(!gameOver) {
+					timer = new Timer();
+					timer.schedule(new TimerTask() {
+						@Override
+						public void run() {
+							Position newPos = new Position(snakePos);
+							newPos.addOffset(directionOffset);
+							if(newPos.getX() >= GRID_SIZE-1 || newPos.getX() < 0)
+								haltGame();
+							else if(newPos.getY() >= GRID_SIZE-1 || newPos.getY() < 0)
+								haltGame();
+							else {
+								setSnakePosition(newPos);
+							}
+						}
+					}, 0, 100);
 				}
 			}
-		}, 0, 100);
+
+			@Override
+			public void focusLost(FocusEvent e) {
+				if(!gameOver)
+					timer.cancel();
+				
+			}
+		});
 	}
 	
 	private boolean placeCollectibeItem(Position position) {
@@ -194,6 +210,7 @@ public class MainWindow extends JFrame{
 	}
 	
 	private void haltGame() {
+		gameOver = true;
 		timer.cancel();
 		JOptionPane.showMessageDialog(null, "Game Over!");
 	}
