@@ -1,11 +1,13 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -28,24 +30,27 @@ public class MainWindow extends JFrame{
 	private final int GRID_SIZE = 70;
 	private final Color DEFAULT_BACKGROUND = Color.GRAY;
 	private final Color SNAKE_COLOR = Color.GREEN;
+	private final Color SNAKE_DEAD_COLOR = Color.RED;
 	private final Color COLLECTIBLE_COLOR = Color.RED;
 	private final Color COLLECTIBLE_COLOR_2 = Color.ORANGE;
-	//private static final Border tileBorder = BorderFactory.createBevelBorder(BevelBorder.LOWERED);
+	private final Font defaultFont = new Font("Papyrus", Font.BOLD, 16);
+	
 	private static final Border snakeBorder = BorderFactory.createBevelBorder(BevelBorder.RAISED);
 	private static final Border objectBorder = BorderFactory.createBevelBorder(BevelBorder.RAISED);
 	
 	// offset constants - these are to be added to the current position
 	private static final Position leftOffset = new Position(0, -1);
 	private static final Position rightOffset = new Position(0, 1);
-	private static final Position upOffset = new Position(-1, 0);
-	private static final Position downOffset = new Position(1, 0);
+	private static final Position upwardOffset = new Position(-1, 0);
+	private static final Position downwardOffset = new Position(1, 0);
 	
 	private Timer snakeMoveTimer, blipTimer;
 	private JPanel topPanel, gridPanel;
 	private JPanel[][] gridCells;
-	private Position snakePos, colObjPos, directionOffset;
-	private boolean gameOver;
+	private Position colObjPos, prevColObjPos, directionOffset;
+	private boolean gameOver, firstColObj;
 	private int score;
+	private ArrayList<Position> snakePos;
 	
 	private JLabel scoreLabel;
 	
@@ -56,7 +61,9 @@ public class MainWindow extends JFrame{
 		
 		score = 0;
 		gameOver = false;
+		firstColObj = true;
 		directionOffset = rightOffset;
+		snakePos = new ArrayList<Position>();
 		
 		snakeMoveTimer = new Timer();
 		blipTimer = new Timer();
@@ -65,19 +72,20 @@ public class MainWindow extends JFrame{
 		gridPanel = new JPanel();
 		gridCells = new JPanel[GRID_SIZE][GRID_SIZE];
 		gridPanel.setLayout(new GridLayout(GRID_SIZE, GRID_SIZE, 0, 0));
+		gridPanel.setBackground(Color.BLACK);  
 		
 		Random random = new Random();
 		for(int i=0; i<gridCells.length; i++) {
 			for(int j=0; j<gridCells[i].length; j++) {
 				gridCells[i][j] = new JPanel();
 				gridCells[i][j].setBackground(DEFAULT_BACKGROUND);
-				//gridCells[i][j].setBorder(tileBorder);
 				gridPanel.add(gridCells[i][j]);
 			}
 		}
 		setSnakePosition(new Position(GRID_SIZE/2, Math.abs(random.nextInt()%(GRID_SIZE/3)+2)));
 		
 		scoreLabel = new JLabel("Score: 0");
+		scoreLabel.setFont(defaultFont);
 		
 		initGame();
 		this.getContentPane().add(topPanel, BorderLayout.NORTH);
@@ -101,10 +109,10 @@ public class MainWindow extends JFrame{
 			@Override
 			public void keyReleased(KeyEvent e) {
 				if(e.getKeyCode() == KeyEvent.VK_DOWN) {
-					directionOffset = downOffset;
+					directionOffset = downwardOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_UP) {
-					directionOffset = upOffset;
+					directionOffset = upwardOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_LEFT) {
 					directionOffset = leftOffset;
@@ -133,7 +141,7 @@ public class MainWindow extends JFrame{
 					snakeMoveTimer.schedule(new TimerTask() {
 						@Override
 						public void run() {
-							Position newPos = new Position(snakePos);
+							Position newPos = new Position(snakePos.get(0));
 							newPos.addOffset(directionOffset);
 							if(newPos.getX() >= GRID_SIZE-1 || newPos.getX() < 0)
 								haltGame();
@@ -224,23 +232,68 @@ public class MainWindow extends JFrame{
 	}
 	
 	private void setSnakePosition(Position p) {
-		if(snakePos != null) {
-			gridCells[snakePos.getX()][snakePos.getY()].setBackground(DEFAULT_BACKGROUND);
-			gridCells[snakePos.getX()][snakePos.getY()].setBorder(null);
-			//System.out.println("Snake position updated to " + p + " from " + snakePos);
+		// corner case
+		if(score == 1 && firstColObj) {
+			firstColObj = false;
+			snakePos.add(prevColObjPos);
+			gridCells[prevColObjPos.getX()][prevColObjPos.getY()].setBackground(SNAKE_COLOR);
+			gridCells[prevColObjPos.getX()][prevColObjPos.getY()].setBorder(snakeBorder);
 		}
-		snakePos = new Position(p);
-		gridCells[snakePos.getX()][snakePos.getY()].setBackground(SNAKE_COLOR);
-		gridCells[snakePos.getX()][snakePos.getY()].setBorder(snakeBorder);
-		
-		if(colObjPos != null && snakePos.equals(colObjPos)) {
-			generateCollectibleItem();
-			incrementScore();
+		if(snakePos.size() != 0) {
+			Position tailPos = snakePos.get(snakePos.size()-1);
+			// updating body positions
+			for(int i=snakePos.size()-1; i>0; i--) {
+				snakePos.get(i).setX(snakePos.get(i-1).getX());
+				snakePos.get(i).setY(snakePos.get(i-1).getY());
+			}
+			
+			// processing tail
+			if(prevColObjPos != null && tailPos.equals(prevColObjPos)){
+				snakePos.add(prevColObjPos);
+				prevColObjPos = null;
+			}
+			else {
+				gridCells[tailPos.getX()][tailPos.getY()].setBackground(DEFAULT_BACKGROUND);
+				gridCells[tailPos.getX()][tailPos.getY()].setBorder(null);
+			}
+			
+			// moving head to the new position
+			snakePos.get(0).setX(p.getX());
+			snakePos.get(0).setY(p.getY());
+			
+			// painting the new head position
+			Position headPos = snakePos.get(0);
+			gridCells[headPos.getX()][headPos.getY()].setBackground(SNAKE_COLOR);
+			gridCells[headPos.getX()][headPos.getY()].setBorder(snakeBorder);
+			
+			// checking if object has been captured
+			if(colObjPos != null && headPos.equals(colObjPos)) {
+				prevColObjPos = new Position(colObjPos);
+				generateCollectibleItem();
+				incrementScore();
+			}
+			
+			// checking for collision with body
+			for(int i=1; i<snakePos.size(); i++) {
+				if(snakePos.get(0).equals(snakePos.get(i))) {
+					haltGame();
+					return;
+				}
+			}
+		}
+		else {
+			// initialization
+			snakePos.add(p);
+			gridCells[p.getX()][p.getY()].setBackground(SNAKE_COLOR);
+			gridCells[p.getX()][p.getY()].setBorder(snakeBorder);
 		}
 	}
 	
 	// to end game, stop all timers here
 	private void haltGame() {
+		for(Position p : snakePos) {
+			gridCells[p.getX()][p.getY()].setBackground(SNAKE_DEAD_COLOR);
+		}
 		gameOver = true;
 		snakeMoveTimer.cancel();
 		blipTimer.cancel();
