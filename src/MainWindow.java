@@ -312,9 +312,9 @@ public class MainWindow extends JFrame{
 				public void run() {
 					Position newPos = new Position(snakePos.get(0));
 					newPos.addOffset(directionOffset);
-					if(newPos.getX() >= GRID_SIZE-1 || newPos.getX() < 0)
+					if(newPos.getX() >= GRID_SIZE-1 || newPos.getX() <= 0)
 						haltGame();
-					else if(newPos.getY() >= GRID_SIZE-1 || newPos.getY() < 0)
+					else if(newPos.getY() >= GRID_SIZE-1 || newPos.getY() <= 0)
 						haltGame();
 					else {
 						setSnakePosition(newPos);
