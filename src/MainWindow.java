@@ -188,16 +188,17 @@ public class MainWindow extends JFrame{
 	}
 	
 	private boolean placeCollectibeItem(Position position) {
-		if(position.equals(snakePos))
-			return false;
-		else {
-			colObjPos = new Position(position);
-			gridCells[position.getX()][position.getY()].setBackground(COLLECTIBLE_COLOR);
-			gridCells[position.getX()][position.getY()].setBorder(objectBorder);
-			logger.debug("Collectible item set at position " + position);
-			//System.out.println("Collectible item set at position " + position);
-			return true;
-		}
+		
+		// can use snakePos.contains(position), if hashCode() is overridden in Position class
+		for(Position p : snakePos)
+			if(p.equals(position))
+				return false;
+		
+		colObjPos = new Position(position);
+		gridCells[position.getX()][position.getY()].setBackground(COLLECTIBLE_COLOR);
+		gridCells[position.getX()][position.getY()].setBorder(objectBorder);
+		logger.debug("Collectible item set at position " + position);
+		return true;
 	}
 	
 	private void generateCollectibleItem() {
@@ -237,18 +238,24 @@ public class MainWindow extends JFrame{
 	
 	private void setSnakePosition(Position p) {
 		// corner case
-		if(score == 1 && firstColObj) {
+		/*if(score == 1 && firstColObj) {
 			firstColObj = false;
 			snakePos.add(prevColObjPos);
 			gridCells[prevColObjPos.getX()][prevColObjPos.getY()].setBackground(DEFAULT_SNAKE_COLOR);
 			gridCells[prevColObjPos.getX()][prevColObjPos.getY()].setBorder(snakeBorder);
+		}*/
+		if(snakePos.size() == 0) {
+			// initialization
+			snakePos.add(p);
+			gridCells[p.getX()][p.getY()].setBackground(DEFAULT_SNAKE_COLOR);
+			gridCells[p.getX()][p.getY()].setBorder(snakeBorder);
 		}
-		if(snakePos.size() != 0) {
-			Position tailPos = snakePos.get(snakePos.size()-1);
+		else {
+			Position tailPos = getSnakeTailNode().getPosition();
+			
 			// updating body positions
 			for(int i=snakePos.size()-1; i>0; i--) {
-				snakePos.get(i).setX(snakePos.get(i-1).getX());
-				snakePos.get(i).setY(snakePos.get(i-1).getY());
+				snakePos.get(i).setPosition(snakePos.get(i-1));
 			}
 			
 			// processing tail
@@ -284,12 +291,6 @@ public class MainWindow extends JFrame{
 					return;
 				}
 			}
-		}
-		else {
-			// initialization
-			snakePos.add(p);
-			gridCells[p.getX()][p.getY()].setBackground(DEFAULT_SNAKE_COLOR);
-			gridCells[p.getX()][p.getY()].setBorder(snakeBorder);
 		}
 	}
 	

@@ -9,8 +9,7 @@ public class Position {
 	}
 	
 	public Position(Position other) {
-		this.x = other.getX();
-		this.y = other.getY();
+		setPosition(other);
 	}
 	
 	public int getX() {
@@ -27,6 +26,11 @@ public class Position {
 
 	public void setY(int y) {
 		this.y = y;
+	}
+	
+	public void setPosition(Position other) {
+		this.x = other.getX();
+		this.y = other.getY();
 	}
 	
 	public boolean equals(Position p) {

@@ -1,5 +1,7 @@
 import javax.swing.JPanel;
 
+// POJO class for passing data related to a grid cell
+// specifically the cells representing the snake
 
 public class Node {
 	
@@ -11,19 +13,19 @@ public class Node {
 		this.position = position;
 	}
 	
-	private JPanel getPanel() {
+	public JPanel getPanel() {
 		return panel;
 	}
 	
-	private void setPanel(JPanel panel) {
+	public void setPanel(JPanel panel) {
 		this.panel = panel;
 	}
 	
-	private Position getPosition() {
+	public Position getPosition() {
 		return position;
 	}
 	
-	private void setPosition(Position position) {
+	public void setPosition(Position position) {
 		this.position = position;
 	}
 }
