@@ -40,7 +40,7 @@ public class MainWindow extends JFrame{
 	private final Color COLLECTIBLE_COLOR = Color.GREEN;
 	private final Color COLLECTIBLE_COLOR_2 = Color.ORANGE;
 	private final Color WALL_COLOR = new Color(140, 5, 8);
-	private final Font defaultFont = new Font("Papyrus", Font.BOLD, 16);
+	private final Font defaultFont = new Font("monospace", Font.BOLD, 16);
 	
 	private static final Border snakeBorder = BorderFactory.createBevelBorder(BevelBorder.RAISED);
 	private static final Border objectBorder = BorderFactory.createBevelBorder(BevelBorder.RAISED);
