@@ -1,18 +1,28 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -33,6 +43,12 @@ public class MainWindow extends JFrame{
 	private static final int SNAKE_MOVE_SPEED_FAST = 50;
 	private static final int SNAKE_MOVE_SPEED_MEDIUM = 85;
 	private static final int SNAKE_MOVE_SPEED_SLOW = 125;
+	private static final int WINDOW_HEIGHT = 500;
+	private static final int WINDOW_WIDTH = 900;
+	
+	private static final String GAME_DATA_FILENAME = ".gamedata";
+	private static final String CAPTURE_AUDIO_FILENAME = "audio/capture.mp3";
+	private static final String GAME_OVER_AUDIO_FILENAME = "audio/gameover.mp3";
 	
 	private static final Color DEFAULT_BACKGROUND = new Color(0, 0, 0);
 	private static final Color DEFAULT_SNAKE_COLOR = Color.GREEN;
@@ -40,7 +56,7 @@ public class MainWindow extends JFrame{
 	private static final Color COLLECTIBLE_COLOR = Color.RED;
 	private static final Color COLLECTIBLE_COLOR_2 = DEFAULT_BACKGROUND;
 	private static final Color WALL_COLOR = Color.YELLOW;
-	private static final Font defaultFont = new Font("monospace", Font.BOLD, 16);
+	private static final Font defaultFont = new Font("monospace", Font.BOLD, 13);
 	
 	private static final Border snakeBorder = null;
 	//private static final Border snakeBorder = BorderFactory.createLineBorder(new Color(100, 220, 100));
@@ -54,15 +70,15 @@ public class MainWindow extends JFrame{
 	private static final Position upwardOffset = new Position(-1, 0);
 	private static final Position downwardOffset = new Position(1, 0);
 	
-	private Timer snakeMoveTimer, blipTimer, snakeBlinkTimer;
-	private JPanel topPanel, gridPanel;
+	private Timer snakeMoveTimer, blipTimer, snakeBlinkTimer, secondsCountTimer;
+	private JPanel gridPanel, rightPanel, centerPanel;
 	private JPanel[][] gridCells;
 	private Position colObjPos, prevColObjPos, directionOffset;
-	private boolean gameOver, isPaused;
-	private int score;
+	private boolean gameOver, isPaused, isSoundEnabled;
+	private int score, currentHighScore, secondsElapsed;
 	private ArrayList<Position> snakePos;
 	
-	private JLabel scoreLabel;
+	private JLabel scoreLabel, highScoreLabel, elapsedTimeLabel;
 	
     private static Logger logger = LogManager.getLogger(MainWindow.class);
 	
@@ -70,19 +86,26 @@ public class MainWindow extends JFrame{
 		super("Snake");
 		
 		score = 0;
+		currentHighScore = getHighScore();
 		gameOver = false;
 		isPaused = true;	// needs to be true for resumeGame to execute the first time
+		isSoundEnabled = true;
 		directionOffset = rightOffset;
 		snakePos = new ArrayList<Position>();
 		
 		snakeMoveTimer = new Timer();
 		blipTimer = new Timer();
-
-		topPanel= new JPanel();
+		
+		centerPanel = new JPanel();
 		gridPanel = new JPanel();
+		rightPanel = new JPanel();
+		
 		gridCells = new JPanel[GRID_SIZE][GRID_SIZE];
 		gridPanel.setLayout(new GridLayout(GRID_SIZE, GRID_SIZE, 0, 0));
 		gridPanel.setBackground(Color.BLACK);  
+		
+		centerPanel.setLayout(new BorderLayout());
+		centerPanel.add(gridPanel, BorderLayout.CENTER);
 		
 		Random random = new Random();
 		for(int i=0; i<gridCells.length; i++) {
@@ -95,14 +118,17 @@ public class MainWindow extends JFrame{
 		}
 		setSnakePosition(new Position(GRID_SIZE/2, Math.abs(random.nextInt()%(GRID_SIZE/3)+2)));
 		
-		scoreLabel = new JLabel("Score: 0");
-		scoreLabel.setFont(defaultFont);
+		scoreLabel = getStylizedLabel("Current Score : " + score);
+		highScoreLabel = getStylizedLabel("High Score    : " + currentHighScore);
+		elapsedTimeLabel = getStylizedLabel("Time Elapsed  : 00 mins 00 seconds");
 		
 		initGame();
-		this.getContentPane().add(topPanel, BorderLayout.NORTH);
-		this.getContentPane().add(gridPanel, BorderLayout.CENTER);
+		initRightPanel();
+		this.getContentPane().setLayout(new GridLayout(1, 2, 0, 0));
+		this.getContentPane().add(centerPanel);
+		this.getContentPane().add(rightPanel);
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		this.setSize(500, 500);
+		this.setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 		this.setLocationRelativeTo(null);
 		this.setResizable(false);
 		this.setVisible(true);
@@ -149,15 +175,14 @@ public class MainWindow extends JFrame{
 						MainWindow.this.dispose();
 					}
 				}
+				else if(e.getKeyCode() == KeyEvent.VK_C) {
+					setHighScore(0);
+				}
+				else if(e.getKeyCode() == KeyEvent.VK_S) {
+					isSoundEnabled = !isSoundEnabled;
+				}
 			}
 		});
-		
-		// some minor styling
-		topPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
-		topPanel.setBackground(Color.BLACK);
-		topPanel.add(scoreLabel);
-		gridPanel.setBorder(BorderFactory.createLineBorder(Color.WHITE));
-		scoreLabel.setForeground(Color.GREEN);
 		
 		generateCollectibleItem();
 		
@@ -173,6 +198,53 @@ public class MainWindow extends JFrame{
 				pauseGame();
 			}
 		});
+	}
+	
+	private void initRightPanel() {
+		JPanel tempPanel = new JPanel();
+		tempPanel.setBackground(Color.BLACK);
+		tempPanel.setLayout(new BoxLayout(tempPanel, BoxLayout.Y_AXIS));
+		tempPanel.add(getStylizedLabel("- - - - - - - - - - - - - - - -"));
+		tempPanel.add(getStylizedTitleLabel("   GENERAL STATS"));
+		tempPanel.add(getStylizedLabel("- - - - - - - - - - - - - - - -"));
+		tempPanel.add(scoreLabel);
+		tempPanel.add(highScoreLabel);
+		tempPanel.add(elapsedTimeLabel);
+		tempPanel.add(new JLabel("."));
+		tempPanel.add(getStylizedLabel("- - - - - - - - - - - - - - - -"));
+		tempPanel.add(getStylizedTitleLabel("   MOVEMENT CONTROLS"));
+		tempPanel.add(getStylizedLabel("- - - - - - - - - - - - - - - -"));
+		tempPanel.add(getStylizedLabel("\tMove up      - Up Arrow"));
+		tempPanel.add(getStylizedLabel("\tMove down    - Down Arrow"));
+		tempPanel.add(getStylizedLabel("\tMove left    - Left Arrow"));
+		tempPanel.add(getStylizedLabel("\tMove right   - Right Arrow"));
+		tempPanel.add(new JLabel("."));
+		tempPanel.add(getStylizedLabel("- - - - - - - - - - - - - - - -"));
+		tempPanel.add(getStylizedTitleLabel("   OTHER CONTROLS"));
+		tempPanel.add(getStylizedLabel("- - - - - - - - - - - - - - - -"));
+		tempPanel.add(getStylizedLabel("Pause/Resume     - Escape"));
+		tempPanel.add(getStylizedLabel("New Game         - N"));
+		tempPanel.add(getStylizedLabel("Sound ON/OFF     - S"));
+		tempPanel.add(getStylizedLabel("Reset Highscore  - C"));
+		tempPanel.add(getStylizedLabel(""));
+		
+		rightPanel.setBackground(Color.BLACK);
+		rightPanel.setLayout(new GridBagLayout());
+		GridBagConstraints constraints = new GridBagConstraints();
+		rightPanel.add(tempPanel, constraints);
+	}
+	
+	private JLabel getStylizedLabel(String text) {
+		JLabel label = new JLabel(text);
+		label.setFont(defaultFont);
+		label.setForeground(DEFAULT_SNAKE_COLOR);
+		return label;
+	}
+	
+	private JLabel getStylizedTitleLabel(String text) {
+		JLabel label = getStylizedLabel(text);
+		label.setForeground(Color.YELLOW);
+		return label;
 	}
 	
 	private void createBoundaryWalls() {
@@ -236,7 +308,7 @@ public class MainWindow extends JFrame{
 	}
 	
 	public void updateScoreLabel() {
-		scoreLabel.setText("Score: " + score);
+		scoreLabel.setText("Current Score : " + score);
 	}
 	
 	public void setScoreLabel(String text) {
@@ -287,6 +359,7 @@ public class MainWindow extends JFrame{
 				prevColObjPos = new Position(colObjPos);
 				generateCollectibleItem();
 				incrementScore();
+				playCaptureAudio();
 			}
 			
 			// checking for head collision with body
@@ -303,6 +376,7 @@ public class MainWindow extends JFrame{
 		if(!gameOver && !isPaused) {
 			snakeMoveTimer.cancel();
 			blipTimer.cancel();
+			secondsCountTimer.cancel();
 			isPaused = true;
 			startBlinkingSnake();
 			displayDiagnostics();
@@ -341,7 +415,24 @@ public class MainWindow extends JFrame{
 				}
 			}, 0, OBJECT_BLINK_INTERVAL);
 			isPaused = false;
+			
+			secondsCountTimer = new Timer();
+			secondsCountTimer.schedule(new TimerTask() {
+				@Override
+				public void run() {
+					secondsElapsed++;
+					updateElapsedTime();
+				}
+			}, 0, 1000);
 		}
+	}
+	
+	private void updateElapsedTime() {
+		//TODO: do the mins seconds calc here...
+		int minutes = secondsElapsed / 60;
+		int seconds = secondsElapsed % 60;
+		String text = String.format("Time Elapsed  - %02d:%02d", minutes, seconds);
+		elapsedTimeLabel.setText(text);
 	}
 	
 	// utility function to blink the body of snake
@@ -404,6 +495,11 @@ public class MainWindow extends JFrame{
 		setSnakeColor(SNAKE_DEAD_COLOR);
 		startBlinkingSnake();
 		gameOver = true;
+		playGameOverAudio();
+		if(score > currentHighScore) {
+			currentHighScore = score;
+			setHighScore(score);
+		}
 		snakeMoveTimer.cancel();
 		blipTimer.cancel();
 		JOptionPane.showMessageDialog(null, "Game Over!");
@@ -422,5 +518,72 @@ public class MainWindow extends JFrame{
 		int i = 1;
 		for(Position p: snakePos) 
 			System.out.println("["+(i++)+"] => " + p);
+	}
+	
+	private int getHighScore() {
+		BufferedReader reader = null;
+		try {
+			File gameDataFile = new File(GAME_DATA_FILENAME);
+			if(gameDataFile.exists()) {
+				reader = new BufferedReader(new FileReader(gameDataFile));
+				String line;
+				if((line = reader.readLine()) != null) {
+					return Integer.parseInt(line.trim());
+				}
+			}
+			
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+		finally {
+			if(reader != null) {
+				try { reader.close(); }
+				catch(Exception e) {reader = null;}
+			}
+		}
+		return 0;
+	}
+	
+	private void setHighScore(int score) {
+		highScoreLabel.setText("High Score    : " + currentHighScore);
+		try {
+			File gameDataFile = new File(GAME_DATA_FILENAME);
+			BufferedWriter writer = new BufferedWriter(new FileWriter(gameDataFile, false));
+			writer.write(score+"");
+			writer.flush();
+			writer.close();
+			logger.debug("High score: " + score + " saved to file: " + GAME_DATA_FILENAME);
+		}
+		catch(Exception e) {
+			//TODO: add status message informing failure
+			e.printStackTrace();
+		}
+	}
+	
+	private void playCaptureAudio() {
+		playSound(CAPTURE_AUDIO_FILENAME);
+	}
+	
+	private void playGameOverAudio() {
+		playSound(GAME_OVER_AUDIO_FILENAME);
+	}
+	
+	private synchronized void playSound(final String audioFileName) {
+		if(isSoundEnabled) {
+	    new Thread(new Runnable() {
+	      public void run() {
+	        try {
+	          Clip clip = AudioSystem.getClip();
+	          AudioInputStream inputStream = AudioSystem.getAudioInputStream(MainWindow.class.getResourceAsStream(audioFileName));
+	          clip.open(inputStream);
+	          clip.start(); 
+	        } 
+	        catch (Exception e) {
+	          e.printStackTrace();
+	        }
+	      }
+	    }).start();
+	  }
 	}
 }
