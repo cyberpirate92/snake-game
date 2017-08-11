@@ -28,11 +28,16 @@ public class MainWindow extends JFrame{
 	
 	private static final long serialVersionUID = 1L;
 	private final int GRID_SIZE = 70;
-	private final int BLINK_INTERVAL = 500;
+	private final int SNAKE_BLINK_INTERVAL = 500;
+	private final int OBJECT_BLINK_INTERVAL = 250;
+	private final int SNAKE_MOVE_SPEED_FAST = 50;
+	private final int SNAKE_MOVE_SPEED_MEDIUM = 85;
+	private final int SNAKE_MOVE_SPEED_SLOW = 125;
+	
 	private final Color DEFAULT_BACKGROUND = Color.GRAY;
 	private final Color DEFAULT_SNAKE_COLOR = Color.GREEN;
 	private final Color SNAKE_DEAD_COLOR = Color.RED;
-	private final Color COLLECTIBLE_COLOR = Color.RED;
+	private final Color COLLECTIBLE_COLOR = Color.GREEN;
 	private final Color COLLECTIBLE_COLOR_2 = Color.ORANGE;
 	private final Color WALL_COLOR = new Color(140, 5, 8);
 	private final Font defaultFont = new Font("Papyrus", Font.BOLD, 16);
@@ -98,6 +103,7 @@ public class MainWindow extends JFrame{
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setSize(500, 500);
 		this.setLocationRelativeTo(null);
+		this.setResizable(false);
 		this.setVisible(true);
 	}
 	
@@ -149,7 +155,7 @@ public class MainWindow extends JFrame{
 		topPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
 		topPanel.setBackground(Color.BLACK);
 		topPanel.add(scoreLabel);
-		gridPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+		gridPanel.setBorder(BorderFactory.createLineBorder(Color.WHITE));
 		scoreLabel.setForeground(Color.GREEN);
 		
 		generateCollectibleItem();
@@ -237,18 +243,16 @@ public class MainWindow extends JFrame{
 	}
 	
 	private void setSnakePosition(Position p) {
-		// corner case
-		/*if(score == 1 && firstColObj) {
-			firstColObj = false;
-			snakePos.add(prevColObjPos);
-			gridCells[prevColObjPos.getX()][prevColObjPos.getY()].setBackground(DEFAULT_SNAKE_COLOR);
-			gridCells[prevColObjPos.getX()][prevColObjPos.getY()].setBorder(snakeBorder);
-		}*/
 		if(snakePos.size() == 0) {
 			// initialization
-			snakePos.add(p);
-			gridCells[p.getX()][p.getY()].setBackground(DEFAULT_SNAKE_COLOR);
-			gridCells[p.getX()][p.getY()].setBorder(snakeBorder);
+			Position head, tail;
+			tail = new Position(p);
+			head = new Position(p);
+			head.addOffset(directionOffset);
+			snakePos.add(head);
+			snakePos.add(tail);
+			gridCells[head.getX()][head.getY()].setBackground(DEFAULT_SNAKE_COLOR);
+			gridCells[head.getX()][head.getY()].setBorder(snakeBorder);
 		}
 		else {
 			Position tailPos = getSnakeTailNode().getPosition();
@@ -284,7 +288,7 @@ public class MainWindow extends JFrame{
 				incrementScore();
 			}
 			
-			// checking for collision with body
+			// checking for head collision with body
 			for(int i=1; i<snakePos.size(); i++) {
 				if(snakePos.get(0).equals(snakePos.get(i))) {
 					haltGame();
@@ -311,17 +315,23 @@ public class MainWindow extends JFrame{
 			snakeMoveTimer.schedule(new TimerTask() {
 				@Override
 				public void run() {
+					Position headPos = getSnakeHeadNode().getPosition();
 					Position newPos = new Position(snakePos.get(0));
-					newPos.addOffset(directionOffset);
-					if(newPos.getX() >= GRID_SIZE-1 || newPos.getX() <= 0)
-						haltGame();
-					else if(newPos.getY() >= GRID_SIZE-1 || newPos.getY() <= 0)
-						haltGame();
-					else {
-						setSnakePosition(newPos);
+					Position offsetUsed = directionOffset; // since directionOffset could change via another thread
+					
+					newPos.addOffset(offsetUsed);
+					if(newPos.getX() < 0) {
+						newPos.setX(gridCells.length-1);
 					}
+					newPos.setX(newPos.getX()%gridCells.length);
+					
+					if(newPos.getY() >= GRID_SIZE-1 || newPos.getY() <= 0) {
+						haltGame();
+						return;
+					}
+					setSnakePosition(newPos);
 				}
-			}, 0, 50);
+			}, 0, SNAKE_MOVE_SPEED_FAST);
 			
 			blipTimer = new Timer();
 			blipTimer.schedule(new TimerTask() {
@@ -329,7 +339,7 @@ public class MainWindow extends JFrame{
 				public void run() {
 					pulsateObject();
 				}
-			}, 0, 200);
+			}, 0, OBJECT_BLINK_INTERVAL);
 			isPaused = false;
 		}
 	}
@@ -346,7 +356,7 @@ public class MainWindow extends JFrame{
 				else
 					setSnakeColor(current);
 			}
-		}, 0, BLINK_INTERVAL);
+		}, 0, SNAKE_BLINK_INTERVAL);
 	}
 	
 	private void stopBlinkingSnake() {
