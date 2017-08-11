@@ -30,21 +30,23 @@ public class MainWindow extends JFrame{
 	private final int GRID_SIZE = 70;
 	private final int SNAKE_BLINK_INTERVAL = 500;
 	private final int OBJECT_BLINK_INTERVAL = 250;
-	private final int SNAKE_MOVE_SPEED_FAST = 50;
-	private final int SNAKE_MOVE_SPEED_MEDIUM = 85;
-	private final int SNAKE_MOVE_SPEED_SLOW = 125;
+	private static final int SNAKE_MOVE_SPEED_FAST = 50;
+	private static final int SNAKE_MOVE_SPEED_MEDIUM = 85;
+	private static final int SNAKE_MOVE_SPEED_SLOW = 125;
 	
-	private final Color DEFAULT_BACKGROUND = Color.GRAY;
-	private final Color DEFAULT_SNAKE_COLOR = Color.GREEN;
-	private final Color SNAKE_DEAD_COLOR = Color.RED;
-	private final Color COLLECTIBLE_COLOR = Color.GREEN;
-	private final Color COLLECTIBLE_COLOR_2 = Color.ORANGE;
-	private final Color WALL_COLOR = new Color(140, 5, 8);
-	private final Font defaultFont = new Font("monospace", Font.BOLD, 16);
+	private static final Color DEFAULT_BACKGROUND = new Color(0, 0, 0);
+	private static final Color DEFAULT_SNAKE_COLOR = Color.GREEN;
+	private static final Color SNAKE_DEAD_COLOR = Color.RED;
+	private static final Color COLLECTIBLE_COLOR = Color.RED;
+	private static final Color COLLECTIBLE_COLOR_2 = DEFAULT_BACKGROUND;
+	private static final Color WALL_COLOR = Color.YELLOW;
+	private static final Font defaultFont = new Font("monospace", Font.BOLD, 16);
 	
-	private static final Border snakeBorder = BorderFactory.createBevelBorder(BevelBorder.RAISED);
+	private static final Border snakeBorder = null;
+	//private static final Border snakeBorder = BorderFactory.createLineBorder(new Color(100, 220, 100));
 	private static final Border objectBorder = BorderFactory.createBevelBorder(BevelBorder.RAISED);
 	private static final Border wallBorder = BorderFactory.createBevelBorder(BevelBorder.LOWERED);
+	private static final Border defaultBorder = BorderFactory.createLineBorder(Color.DARK_GRAY);
 	
 	// offset constants - these are to be added to the current position
 	private static final Position leftOffset = new Position(0, -1);
@@ -56,10 +58,9 @@ public class MainWindow extends JFrame{
 	private JPanel topPanel, gridPanel;
 	private JPanel[][] gridCells;
 	private Position colObjPos, prevColObjPos, directionOffset;
-	private boolean gameOver, firstColObj, isPaused;
+	private boolean gameOver, isPaused;
 	private int score;
 	private ArrayList<Position> snakePos;
-	//private Color currentSnakeColor;  // To be added in future
 	
 	private JLabel scoreLabel;
 	
@@ -70,7 +71,6 @@ public class MainWindow extends JFrame{
 		
 		score = 0;
 		gameOver = false;
-		firstColObj = true;
 		isPaused = true;	// needs to be true for resumeGame to execute the first time
 		directionOffset = rightOffset;
 		snakePos = new ArrayList<Position>();
@@ -89,6 +89,7 @@ public class MainWindow extends JFrame{
 			for(int j=0; j<gridCells[i].length; j++) {
 				gridCells[i][j] = new JPanel();
 				gridCells[i][j].setBackground(DEFAULT_BACKGROUND);
+				gridCells[i][j].setBorder(defaultBorder);
 				gridPanel.add(gridCells[i][j]);
 			}
 		}
@@ -269,7 +270,7 @@ public class MainWindow extends JFrame{
 			}
 			else {
 				gridCells[tailPos.getX()][tailPos.getY()].setBackground(DEFAULT_BACKGROUND);
-				gridCells[tailPos.getX()][tailPos.getY()].setBorder(null);
+				gridCells[tailPos.getX()][tailPos.getY()].setBorder(defaultBorder);
 			}
 			
 			// moving head to the new position
@@ -315,7 +316,6 @@ public class MainWindow extends JFrame{
 			snakeMoveTimer.schedule(new TimerTask() {
 				@Override
 				public void run() {
-					Position headPos = getSnakeHeadNode().getPosition();
 					Position newPos = new Position(snakePos.get(0));
 					Position offsetUsed = directionOffset; // since directionOffset could change via another thread
 					
