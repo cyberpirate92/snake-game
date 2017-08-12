@@ -461,7 +461,9 @@ public class MainWindow extends JFrame{
 	}
 	
 	private void setSnakeColor(Color c) {
-		for(Position p: snakePos) {
+		// i<snakePos.size()-1  dirty fix for issue #11
+		for(int i=0; i<snakePos.size()-1; i++) {
+			Position p = snakePos.get(i);
 			gridCells[p.getX()][p.getY()].setBackground(c);
 		}
 	}
@@ -472,7 +474,9 @@ public class MainWindow extends JFrame{
 	}
 	
 	private void setSnakeBorder(Border b) {
-		for(Position p: snakePos) {
+		// i<snakePos.size()-1  dirty fix for issue #11
+		for(int i=0; i<snakePos.size()-1; i++) {
+			Position p = snakePos.get(i);
 			gridCells[p.getX()][p.getY()].setBorder(b);
 		}
 	}
