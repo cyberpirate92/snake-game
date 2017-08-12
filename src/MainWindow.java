@@ -59,7 +59,6 @@ public class MainWindow extends JFrame{
 	private static final Font defaultFont = new Font("monospace", Font.BOLD, 13);
 	
 	private static final Border snakeBorder = null;
-	//private static final Border snakeBorder = BorderFactory.createLineBorder(new Color(100, 220, 100));
 	private static final Border objectBorder = BorderFactory.createBevelBorder(BevelBorder.RAISED);
 	private static final Border wallBorder = BorderFactory.createBevelBorder(BevelBorder.LOWERED);
 	private static final Border defaultBorder = BorderFactory.createLineBorder(Color.DARK_GRAY);
@@ -73,7 +72,7 @@ public class MainWindow extends JFrame{
 	private Timer snakeMoveTimer, blipTimer, snakeBlinkTimer, secondsCountTimer;
 	private JPanel gridPanel, rightPanel, centerPanel;
 	private JPanel[][] gridCells;
-	private Position colObjPos, prevColObjPos, directionOffset;
+	private Position colObjPos, prevColObjPos, directionOffset, prevDirectionOffset;
 	private boolean gameOver, isPaused, isSoundEnabled;
 	private int score, currentHighScore, secondsElapsed;
 	private ArrayList<Position> snakePos;
@@ -90,7 +89,8 @@ public class MainWindow extends JFrame{
 		gameOver = false;
 		isPaused = true;	// needs to be true for resumeGame to execute the first time
 		isSoundEnabled = true;
-		directionOffset = rightOffset;
+		directionOffset = new Position(rightOffset);
+		prevDirectionOffset = new Position(rightOffset);
 		snakePos = new ArrayList<Position>();
 		
 		snakeMoveTimer = new Timer();
@@ -148,19 +148,19 @@ public class MainWindow extends JFrame{
 			@Override
 			public void keyReleased(KeyEvent e) {
 				if(e.getKeyCode() == KeyEvent.VK_DOWN) {
-					if(!directionOffset.equals(upwardOffset))
+					if(!prevDirectionOffset.equals(upwardOffset))
 						directionOffset = downwardOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_UP) {
-					if(!directionOffset.equals(downwardOffset))
+					if(!prevDirectionOffset.equals(downwardOffset))
 						directionOffset = upwardOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_LEFT) {
-					if(!directionOffset.equals(rightOffset))
+					if(!prevDirectionOffset.equals(rightOffset))
 						directionOffset = leftOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_RIGHT) {
-					if(!directionOffset.equals(leftOffset))
+					if(!prevDirectionOffset.equals(leftOffset))
 						directionOffset = rightOffset;
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_ESCAPE) {
@@ -321,7 +321,8 @@ public class MainWindow extends JFrame{
 			Position head, tail;
 			tail = new Position(p);
 			head = new Position(p);
-			head.addOffset(directionOffset);
+			prevDirectionOffset = new Position(directionOffset);
+			head.addOffset(prevDirectionOffset);
 			snakePos.add(head);
 			snakePos.add(tail);
 			gridCells[head.getX()][head.getY()].setBackground(DEFAULT_SNAKE_COLOR);
@@ -403,6 +404,7 @@ public class MainWindow extends JFrame{
 						haltGame();
 						return;
 					}
+					prevDirectionOffset = new Position(offsetUsed);
 					setSnakePosition(newPos);
 				}
 			}, 0, SNAKE_MOVE_SPEED_FAST);
