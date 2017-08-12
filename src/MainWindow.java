@@ -13,6 +13,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
@@ -47,8 +48,7 @@ public class MainWindow extends JFrame{
 	private static final int WINDOW_WIDTH = 900;
 	
 	private static final String GAME_DATA_FILENAME = ".gamedata";
-	private static final String CAPTURE_AUDIO_FILENAME = "audio/capture.mp3";
-	private static final String GAME_OVER_AUDIO_FILENAME = "audio/gameover.mp3";
+	private static final String CAPTURE_AUDIO_FILENAME = "capture.wav";
 	
 	private static final Color DEFAULT_BACKGROUND = new Color(0, 0, 0);
 	private static final Color DEFAULT_SNAKE_COLOR = Color.GREEN;
@@ -508,7 +508,6 @@ public class MainWindow extends JFrame{
 		setSnakeColor(SNAKE_DEAD_COLOR);
 		startBlinkingSnake();
 		gameOver = true;
-		playGameOverAudio();
 		if(score > currentHighScore) {
 			currentHighScore = score;
 			setHighScore(score);
@@ -631,25 +630,23 @@ public class MainWindow extends JFrame{
 		playSound(CAPTURE_AUDIO_FILENAME);
 	}
 	
-	private void playGameOverAudio() {
-		playSound(GAME_OVER_AUDIO_FILENAME);
-	}
-	
 	private synchronized void playSound(final String audioFileName) {
 		if(isSoundEnabled) {
-	    new Thread(new Runnable() {
-	      public void run() {
-	        try {
-	          Clip clip = AudioSystem.getClip();
-	          AudioInputStream inputStream = AudioSystem.getAudioInputStream(MainWindow.class.getResourceAsStream(audioFileName));
-	          clip.open(inputStream);
-	          clip.start(); 
-	        } 
-	        catch (Exception e) {
-	          e.printStackTrace();
-	        }
-	      }
-	    }).start();
-	  }
+			try {
+				Clip clip = AudioSystem.getClip();
+				InputStream inputStream = MainWindow.class.getResourceAsStream(audioFileName);
+				if(inputStream != null) {
+					AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(inputStream);
+					clip.open(audioInputStream);
+					clip.start();
+				}
+				else {
+					System.out.println("Input stream not valid");
+				}
+			} 
+			catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }
