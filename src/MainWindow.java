@@ -107,7 +107,6 @@ public class MainWindow extends JFrame{
 		centerPanel.setLayout(new BorderLayout());
 		centerPanel.add(gridPanel, BorderLayout.CENTER);
 		
-		Random random = new Random();
 		for(int i=0; i<gridCells.length; i++) {
 			for(int j=0; j<gridCells[i].length; j++) {
 				gridCells[i][j] = new JPanel();
@@ -116,7 +115,7 @@ public class MainWindow extends JFrame{
 				gridPanel.add(gridCells[i][j]);
 			}
 		}
-		setSnakePosition(new Position(GRID_SIZE/2, Math.abs(random.nextInt()%(GRID_SIZE/3)+2)));
+		createSnake();
 		
 		scoreLabel = getStylizedLabel("Current Score : " + score);
 		highScoreLabel = getStylizedLabel("High Score    : " + currentHighScore);
@@ -132,6 +131,11 @@ public class MainWindow extends JFrame{
 		this.setLocationRelativeTo(null);
 		this.setResizable(false);
 		this.setVisible(true);
+	}
+	
+	private void createSnake() {
+		Random random = new Random();
+		setSnakePosition(new Position(GRID_SIZE/2, Math.abs(random.nextInt()%(GRID_SIZE/3)+2)));
 	}
 	
 	public void initGame() {
@@ -171,8 +175,7 @@ public class MainWindow extends JFrame{
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_N) {
 					if(gameOver) {
-						new MainWindow();
-						MainWindow.this.dispose();
+						startNewGame();
 					}
 				}
 				else if(e.getKeyCode() == KeyEvent.VK_C) {
@@ -391,6 +394,10 @@ public class MainWindow extends JFrame{
 			snakeMoveTimer.schedule(new TimerTask() {
 				@Override
 				public void run() {
+					// cases like new game
+					if(snakePos.size() == 0)
+						createSnake();
+					
 					Position newPos = new Position(snakePos.get(0));
 					Position offsetUsed = directionOffset; // since directionOffset could change via another thread
 					
@@ -515,11 +522,60 @@ public class MainWindow extends JFrame{
 		JOptionPane.showMessageDialog(null, "Game Over!");
 	}
 	
+	// used to reset game to start a new game
+	// all the previous game state must be reset here
 	private void resetGame() {
+		// stopping all timers
 		if(snakeBlinkTimer != null) {
 			snakeBlinkTimer.cancel();
 		}
+		if(blipTimer != null) {
+			blipTimer.cancel();
+		}
+		if(secondsCountTimer != null) {
+			secondsCountTimer.cancel();
+		}
+		if(snakeBlinkTimer != null) {
+			snakeBlinkTimer.cancel();
+		}
+		// resetting current score
+		setScore(0);
+		// clearing snake
 		snakePos.clear();
+		// clearing collectible item (if any)
+		clearCollectibleItem();
+		// repainting the entire grid
+		clearGrid();
+	}
+	
+	private void clearCollectibleItem() {
+		if(colObjPos != null) {
+			gridCells[colObjPos.getX()][colObjPos.getY()].setBackground(DEFAULT_BACKGROUND);
+			gridCells[colObjPos.getX()][colObjPos.getY()].setBorder(defaultBorder);
+			colObjPos = null;
+		}
+	}
+	
+	// Utility method that is used to repaint
+	// the entire grid to the initial state
+	private void clearGrid() {
+		for(int i=0; i<gridCells.length; i++) {
+			for(int j=0; j<gridCells[i].length; j++) {
+				gridCells[i][j].setBackground(DEFAULT_BACKGROUND);
+				gridCells[i][j].setBorder(defaultBorder);
+			}
+		}
+		createBoundaryWalls();
+	}
+	
+	private void startNewGame() {
+		resetGame();
+		gameOver = false;
+		isPaused = true;
+		directionOffset = new Position(rightOffset);
+		prevDirectionOffset = new Position(rightOffset);
+		generateCollectibleItem();
+		resumeGame();
 	}
 	
 	private void displayDiagnostics() {
