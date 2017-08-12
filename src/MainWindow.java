@@ -500,8 +500,12 @@ public class MainWindow extends JFrame{
 			currentHighScore = score;
 			setHighScore(score);
 		}
-		snakeMoveTimer.cancel();
-		blipTimer.cancel();
+		if(snakeMoveTimer != null)
+			snakeMoveTimer.cancel();
+		if(blipTimer != null)
+			blipTimer.cancel();
+		if(secondsCountTimer != null)
+			secondsCountTimer.cancel();
 		JOptionPane.showMessageDialog(null, "Game Over!");
 	}
 	
