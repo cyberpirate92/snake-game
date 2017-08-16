@@ -7,5 +7,5 @@ A simple snake game where the only aim is to consume as many objects as possible
 > ----- 
 To run the game,
 
-1. Compile code: `javac MainWindow.java`
-2. Run: `java MainWindow`
+1. Compile code: `javac Test.java`
+2. Run: `java Test`
